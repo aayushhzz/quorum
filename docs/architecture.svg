@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 560" role="img" aria-labelledby="t d">
+  <title id="t">Architecture</title>
+  <desc id="d">Browser to Worker to TeamRoom Durable Object to five TeamMember Durable Objects, with Workers AI and Vectorize.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .box { fill: #f8fafc; stroke: #94a3b8; stroke-width: 2; }
+      .room { fill: #ede9fe; stroke: #7c3aed; stroke-width: 2.5; }
+      .agent { fill: #e0f2fe; stroke: #0284c7; stroke-width: 2; }
+      .ai { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
+      .edge { stroke: #64748b; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .title { font: 700 20px -apple-system, Segoe UI, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .sub { font: 500 15px -apple-system, Segoe UI, Helvetica, Arial, sans-serif; fill: #475569; }
+      .label { font: 600 13px -apple-system, Segoe UI, Helvetica, Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+  <rect width="1100" height="560" rx="20" fill="#ffffff"/>
+
+  <!-- Browser -->
+  <rect class="box" x="30" y="220" width="190" height="110" rx="14"/>
+  <text class="title" x="125" y="262" text-anchor="middle">🖥 Browser</text>
+  <text class="sub" x="125" y="288" text-anchor="middle">React chat UI</text>
+  <text class="sub" x="125" y="308" text-anchor="middle">passcode screen</text>
+
+  <!-- Worker -->
+  <rect class="box" x="265" y="220" width="200" height="110" rx="14"/>
+  <text class="title" x="365" y="262" text-anchor="middle">⚡ Worker</text>
+  <text class="sub" x="365" y="288" text-anchor="middle">login · session</text>
+  <text class="sub" x="365" y="308" text-anchor="middle">HTTPS · headers</text>
+
+  <!-- LoginGuard -->
+  <rect class="box" x="265" y="60" width="200" height="90" rx="14"/>
+  <text class="title" x="365" y="100" text-anchor="middle">🛡 LoginGuard</text>
+  <text class="sub" x="365" y="124" text-anchor="middle">rate-limits logins</text>
+
+  <!-- TeamRoom -->
+  <rect class="room" x="530" y="200" width="230" height="150" rx="16"/>
+  <text class="title" x="645" y="240" text-anchor="middle">💬 TeamRoom</text>
+  <text class="sub" x="645" y="266" text-anchor="middle">shared transcript</text>
+  <text class="sub" x="645" y="286" text-anchor="middle">routing · @tag hand-offs</text>
+  <text class="sub" x="645" y="306" text-anchor="middle">reply budget · queue</text>
+
+  <!-- TeamMembers -->
+  <rect class="agent" x="830" y="30" width="240" height="88" rx="14"/>
+  <text class="title" x="950" y="66" text-anchor="middle">🧠 Lena · @lead</text>
+  <text class="sub" x="950" y="92" text-anchor="middle">own SQLite memory · RAG</text>
+  <rect class="agent" x="830" y="136" width="240" height="88" rx="14"/>
+  <text class="title" x="950" y="172" text-anchor="middle">🧠 Bao · @backend</text>
+  <text class="sub" x="950" y="198" text-anchor="middle">own SQLite memory · RAG</text>
+  <rect class="agent" x="830" y="242" width="240" height="88" rx="14"/>
+  <text class="title" x="950" y="278" text-anchor="middle">🧠 Fern · @frontend</text>
+  <text class="sub" x="950" y="304" text-anchor="middle">own SQLite memory · RAG</text>
+  <rect class="agent" x="830" y="348" width="240" height="88" rx="14"/>
+  <text class="title" x="950" y="384" text-anchor="middle">🧠 Quinn · @qa</text>
+  <text class="sub" x="950" y="410" text-anchor="middle">own SQLite memory · RAG</text>
+  <rect class="agent" x="830" y="454" width="240" height="88" rx="14"/>
+  <text class="title" x="950" y="490" text-anchor="middle">🧠 Dev · @devops</text>
+  <text class="sub" x="950" y="516" text-anchor="middle">own SQLite memory · RAG</text>
+
+  <!-- AI services -->
+  <rect class="ai" x="265" y="400" width="200" height="120" rx="14"/>
+  <text class="title" x="365" y="440" text-anchor="middle">🦙 Workers AI</text>
+  <text class="sub" x="365" y="466" text-anchor="middle">Llama 3.3 · routing</text>
+  <text class="sub" x="365" y="486" text-anchor="middle">replies · bge embeddings</text>
+  <rect class="ai" x="530" y="430" width="230" height="90" rx="14"/>
+  <text class="title" x="645" y="468" text-anchor="middle">🔎 Vectorize</text>
+  <text class="sub" x="645" y="492" text-anchor="middle">one namespace per agent</text>
+
+  <!-- edges -->
+  <path class="edge" d="M220 275 L263 275"/>
+  <path class="edge" d="M365 218 L365 152"/>
+  <path class="edge" d="M465 275 L528 275"/>
+  <path class="edge" d="M760 240 C 790 180, 800 74, 828 74"/>
+  <path class="edge" d="M760 262 C 790 236, 800 180, 828 180"/>
+  <path class="edge" d="M760 290 C 790 300, 800 286, 828 286"/>
+  <path class="edge" d="M760 318 C 790 370, 800 392, 828 392"/>
+  <path class="edge" d="M760 340 C 790 420, 800 498, 828 498"/>
+  <path class="edge" d="M645 352 L645 428"/>
+  <path class="edge" d="M365 398 L365 352" />
+
+  <text class="label" x="30" y="40">Request path →</text>
+  <text class="label" x="530" y="40">Each message goes to all five agents,</text>
+  <text class="label" x="530" y="58">and each one decides what to remember.</text>
+</svg>
