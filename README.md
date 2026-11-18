@@ -52,16 +52,24 @@ You ──► TeamRoom (Durable Object)
 npm install
 npx wrangler login                                   # Workers AI + Vectorize run remotely, even in dev
 npx wrangler vectorize create team-memory --dimensions=384 --metric=cosine   # once per account
-echo 'TEAM_PASSCODE="choose-a-passcode"' > .dev.vars  # gitignored; the chat asks for it
+printf 'TEAM_PASSCODE="choose-a-passcode"\nSESSION_SECRET="%s"\n' "$(openssl rand -hex 32)" > .dev.vars  # gitignored
 npm run dev                                          # http://localhost:5173
 ```
 
-## Access
+## Security
 
-The chat is behind a shared passcode. `POST /api/login` checks it and sets an
-HttpOnly, Secure, SameSite=Strict cookie holding an HMAC of the passcode; every
-`/agents/*` request (including the WebSocket) needs that cookie. With no passcode
-configured, everything is refused. Changing the passcode signs everyone out.
+- **Access:** a shared passcode. `POST /api/login` checks it and sets a signed session
+  cookie (`issuedAt.nonce.HMAC(SESSION_SECRET, …)`), HttpOnly, Secure, SameSite=Strict.
+  Sessions expire server-side after 7 days, `POST /api/logout` clears the cookie, and
+  changing either secret signs everyone out. Every `/agents/*` request (including the
+  WebSocket) needs a valid session; with a secret missing, everything is refused.
+- **Brute force:** the `LoginGuard` Durable Object allows 5 failed logins per IP per
+  minute and 50 across all IPs per hour, then returns 429.
+- **Room state is server-only:** clients can't write agent state (`validateStateChange`).
+- **Cost abuse:** one team run at a time per room, at most 6 messages a minute.
+- **HTTP:** every request runs through the Worker, which redirects http to https and adds
+  CSP, HSTS, X-Content-Type-Options, X-Frame-Options and Referrer-Policy.
+- **Logging:** Workers observability is on; failed logins are logged (IP only, never the passcode).
 
 Your account needs a workers.dev subdomain for remote bindings in dev
 (Dashboard → Workers & Pages).
@@ -69,7 +77,7 @@ Your account needs a workers.dev subdomain for remote bindings in dev
 ## Test
 
 ```bash
-node --test test/     # team logic and passcode auth
+node --test test/     # team logic, auth and HTTP hardening
 npx tsc --noEmit
 ```
 
@@ -77,6 +85,7 @@ npx tsc --noEmit
 
 ```bash
 npx wrangler secret put TEAM_PASSCODE   # once
+openssl rand -hex 32 | npx wrangler secret put SESSION_SECRET   # once
 npm run deploy
 ```
 

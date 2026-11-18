@@ -38,8 +38,8 @@ function Avatar({ role }: { role?: Role }) {
 }
 
 /** Highlights @tags that name a teammate. */
-function withMentions(text: string): ReactNode[] {
-  return text.split(/(@[a-z]+)\b/gi).map((part, i) => {
+function withMentions(text: unknown): ReactNode[] {
+  return String(text ?? "").split(/(@[a-z]+)\b/gi).map((part, i) => {
     const tag = part.startsWith("@") ? part.slice(1).toLowerCase() : "";
     const role = ROLES.find(
       (r) => r.id === tag || r.name.toLowerCase() === tag
@@ -147,10 +147,17 @@ function TeamChat() {
     agent.call("getMemories", [viewing.id]).then(setMemories);
   }, [viewing, state.memoryCounts]);
 
-  const send = (text = draft) => {
+  const [notice, setNotice] = useState("");
+
+  const send = async (text = draft) => {
     if (!text.trim()) return;
-    agent.call("sendMessage", [text]);
-    setDraft("");
+    setNotice("");
+    try {
+      await agent.call("sendMessage", [text]);
+      setDraft("");
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Message not sent.");
+    }
   };
 
   const tag = (role: Role) => {
@@ -211,6 +218,16 @@ function TeamChat() {
           className="mt-4 hidden text-xs text-red-600 hover:underline md:block"
         >
           Clear chat and all memories
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            await fetch("/api/logout", { method: "POST" });
+            location.reload();
+          }}
+          className="mt-2 hidden text-xs text-gray-500 hover:underline md:block"
+        >
+          Log out
         </button>
       </aside>
 
@@ -275,6 +292,11 @@ function TeamChat() {
             send();
           }}
         >
+          {notice && (
+            <p role="alert" className="mb-2 text-xs text-amber-600">
+              {notice}
+            </p>
+          )}
           <div className="mb-2 flex flex-wrap gap-1">
             {ROLES.map((role) => (
               <button

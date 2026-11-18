@@ -1,8 +1,18 @@
+import { DurableObject } from "cloudflare:workers";
 import { Agent, callable, getAgentByName, routeAgentRequest } from "agents";
-import { authCookie, checkPasscode, isAuthorized } from "./auth";
+import {
+  checkPasscode,
+  clearedCookie,
+  createSession,
+  isAuthorized,
+  loginBlocked,
+  sessionCookie
+} from "./auth";
+import { httpsRedirectUrl, isLocalHost, withSecurityHeaders } from "./http";
 import {
   HUMAN_ID,
   MAX_AGENT_REPLIES,
+  MESSAGES_PER_MINUTE,
   RAG_TOP_K,
   RECENT_MEMORIES,
   ROLES,
@@ -10,6 +20,7 @@ import {
   evictionCount,
   extractText,
   handoffTargets,
+  messageRejection,
   parseMentions,
   parseRoute,
   roleById,
@@ -216,6 +227,13 @@ ${message.text}`;
 export class TeamRoom extends Agent<Env, RoomState> {
   initialState: RoomState = { messages: [], memoryCounts: {}, working: [] };
   private roleEmbeddings?: Promise<number[][]>;
+  private running = false;
+  private recentSentAt: number[] = [];
+
+  /** Only the server may change room state; clients get it read-only. */
+  validateStateChange(_next: RoomState, source: unknown) {
+    if (source !== "server") throw new Error("Room state is read-only");
+  }
 
   onStart() {
     this.sql`CREATE TABLE IF NOT EXISTS messages (
@@ -249,12 +267,24 @@ export class TeamRoom extends Agent<Env, RoomState> {
   }
 
   @callable()
-  async sendMessage(text: string): Promise<void> {
+  async sendMessage(text: unknown): Promise<void> {
+    if (typeof text !== "string") throw new Error("Message must be text.");
     const trimmed = text.trim().slice(0, 4000);
     if (!trimmed) return;
+    const now = Date.now();
+    const rejection = messageRejection(this.recentSentAt, now, this.running);
+    if (rejection) throw new Error(rejection);
+    // In-memory guard: resets if the room restarts, which also ends any run.
+    this.running = true;
+    this.recentSentAt = [...this.recentSentAt, now].slice(-MESSAGES_PER_MINUTE);
     const message = this.append(HUMAN_ID, trimmed);
-    // Reply in the background so the UI isn't blocked on the model.
-    await this.queue("handleHumanMessage", message);
+    try {
+      // Reply in the background so the UI isn't blocked on the model.
+      await this.queue("handleHumanMessage", message);
+    } catch (error) {
+      this.running = false;
+      throw error;
+    }
   }
 
   async handleHumanMessage(message: ChatMessage): Promise<void> {
@@ -267,6 +297,8 @@ export class TeamRoom extends Agent<Env, RoomState> {
         "lead",
         "Something went wrong while the team was replying. Please try again."
       );
+    } finally {
+      this.running = false;
     }
   }
 
@@ -361,31 +393,111 @@ export class TeamRoom extends Agent<Env, RoomState> {
   }
 }
 
-export default {
-  async fetch(request: Request, env: Env) {
-    const { pathname } = new URL(request.url);
-    const passcode = env.TEAM_PASSCODE;
+/** Counts failed logins per IP and globally; one instance guards the whole app. */
+export class LoginGuard extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS failures (ip TEXT NOT NULL, ts INTEGER NOT NULL)"
+    );
+  }
 
-    if (pathname === "/api/login" && request.method === "POST") {
-      const body = (await request.json().catch(() => ({}))) as {
-        passcode?: unknown;
-      };
-      if (!(await checkPasscode(body.passcode, passcode)))
-        return new Response("Wrong passcode", { status: 401 });
-      return new Response(null, {
-        status: 204,
-        headers: { "Set-Cookie": await authCookie(passcode) }
+  isBlocked(ip: string, nowMs: number): boolean {
+    const sql = this.ctx.storage.sql;
+    sql.exec("DELETE FROM failures WHERE ts < ?", nowMs - 3_600_000);
+    const perIp = sql
+      .exec<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM failures WHERE ip = ? AND ts >= ?",
+        ip,
+        nowMs - 60_000
+      )
+      .one().n;
+    const global = sql
+      .exec<{ n: number }>("SELECT COUNT(*) AS n FROM failures")
+      .one().n;
+    return loginBlocked(perIp, global);
+  }
+
+  recordFailure(ip: string, nowMs: number): void {
+    this.ctx.storage.sql.exec(
+      "INSERT INTO failures (ip, ts) VALUES (?, ?)",
+      ip,
+      nowMs
+    );
+  }
+}
+
+async function handle(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const { pathname } = url;
+  const secrets = {
+    passcode: env.TEAM_PASSCODE,
+    sessionSecret: env.SESSION_SECRET
+  };
+  const now = Date.now();
+
+  if (pathname === "/api/login") {
+    if (request.method !== "POST")
+      return new Response("Method not allowed", { status: 405 });
+    const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+    const guard = env.LoginGuard.getByName("global");
+    if (await guard.isBlocked(ip, now))
+      return new Response("Too many attempts. Try again later.", {
+        status: 429,
+        headers: { "Retry-After": "60" }
       });
+    const body = (await request.json().catch(() => ({}))) as {
+      passcode?: unknown;
+    };
+    if (
+      !secrets.passcode ||
+      !secrets.sessionSecret ||
+      !(await checkPasscode(body.passcode, secrets.passcode))
+    ) {
+      await guard.recordFailure(ip, now);
+      console.warn("Login failed", { ip });
+      return new Response("Wrong passcode", { status: 401 });
     }
+    const token = await createSession(
+      { passcode: secrets.passcode, sessionSecret: secrets.sessionSecret },
+      now
+    );
+    return new Response(null, {
+      status: 204,
+      headers: { "Set-Cookie": sessionCookie(token) }
+    });
+  }
 
-    const authorized = await isAuthorized(request, passcode);
+  if (pathname === "/api/logout")
+    return new Response(null, {
+      status: 204,
+      headers: { "Set-Cookie": clearedCookie() }
+    });
+
+  if (pathname === "/api/session" || pathname.startsWith("/agents/")) {
+    const authorized = await isAuthorized(request, secrets, now);
     if (pathname === "/api/session")
       return new Response(null, { status: authorized ? 204 : 401 });
     if (!authorized) return new Response("Unauthorized", { status: 401 });
-
     return (
       (await routeAgentRequest(request, env)) ||
       new Response("Not found", { status: 404 })
+    );
+  }
+
+  if (pathname.startsWith("/api/"))
+    return new Response("Not found", { status: 404 });
+  return env.ASSETS.fetch(request);
+}
+
+export default {
+  async fetch(request: Request, env: Env) {
+    const url = new URL(request.url);
+    const redirect = httpsRedirectUrl(url);
+    if (redirect) return Response.redirect(redirect, 301);
+    return withSecurityHeaders(
+      await handle(request, env),
+      isLocalHost(url.hostname)
     );
   }
 } satisfies ExportedHandler<Env>;

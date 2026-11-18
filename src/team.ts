@@ -61,6 +61,22 @@ export const RECENT_MEMORIES = 3;
 /** An agent remembers a message if its relevance is within this of the most relevant role's. */
 export const RELEVANCE_MARGIN = 0.03;
 
+/** Human messages a room accepts per minute; each one can cost ~10 model calls. */
+export const MESSAGES_PER_MINUTE = 6;
+
+/** Why a new human message must wait, or null if it can be sent now. */
+export function messageRejection(
+  recentSentAt: readonly number[],
+  nowMs: number,
+  running: boolean
+): string | null {
+  if (running) return "The team is still replying. Wait for them to finish.";
+  const lastMinute = recentSentAt.filter((t) => nowMs - t < 60_000).length;
+  if (lastMinute >= MESSAGES_PER_MINUTE)
+    return `Limit is ${MESSAGES_PER_MINUTE} messages a minute. Try again shortly.`;
+  return null;
+}
+
 const ROLE_IDS = new Set<string>(ROLES.map((r) => r.id));
 
 export function isRoleId(id: string): id is RoleId {

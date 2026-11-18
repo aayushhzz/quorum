@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   ROLES,
   MEMORY_CAP,
+  MESSAGES_PER_MINUTE,
+  messageRejection,
   cosine,
   evictionCount,
   extractText,
@@ -27,6 +29,16 @@ test("handoffTargets skips the author and the agent being answered", () => {
   assert.deepEqual(handoffTargets("@backend I'll ask @devops", "backend"), ["devops"]);
   assert.deepEqual(handoffTargets("Done, @devops set up Mailgun", "backend", "devops"), []);
   assert.deepEqual(handoffTargets("@devops done; @qa please test", "backend", "devops"), ["qa"]);
+});
+
+test("messageRejection blocks while running and above the per-minute cap", () => {
+  const now = 1_000_000;
+  assert.equal(messageRejection([], now, false), null);
+  assert.match(messageRejection([], now, true), /still replying/);
+  const full = Array.from({ length: MESSAGES_PER_MINUTE }, (_, i) => now - i * 1000);
+  assert.match(messageRejection(full, now, false), /Limit/);
+  const old = full.map((t) => t - 60_000);
+  assert.equal(messageRejection(old, now, false), null);
 });
 
 test("cosine handles identical, orthogonal and zero vectors", () => {

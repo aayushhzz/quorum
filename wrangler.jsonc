@@ -10,19 +10,27 @@
   ],
   "assets": {
     "directory": "./public",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/agents/*", "/api/*"]
+    // Every request goes through the Worker so it can redirect to HTTPS and add security headers.
+    "run_worker_first": true
   },
+  "observability": { "enabled": true },
   "durable_objects": {
     "bindings": [
       { "class_name": "TeamRoom", "name": "TeamRoom" },
-      { "class_name": "TeamMember", "name": "TeamMember" }
+      { "class_name": "TeamMember", "name": "TeamMember" },
+      { "class_name": "LoginGuard", "name": "LoginGuard" }
     ]
   },
   "migrations": [
     {
       "new_sqlite_classes": ["TeamRoom", "TeamMember"],
       "tag": "v1"
+    },
+    {
+      "new_sqlite_classes": ["LoginGuard"],
+      "tag": "v2"
     }
   ]
 }
