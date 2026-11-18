@@ -144,8 +144,8 @@ One request, passed around the team:
 **Prerequisites:** Node 20+, and a Cloudflare account with a `workers.dev` subdomain.
 
 ```bash
-git clone https://github.com/aayushhzz/cf-ai-team-chat.git
-cd cf-ai-team-chat
+git clone https://github.com/aayushhzz/quorum.git
+cd quorum
 npm install
 npx wrangler login
 npx wrangler vectorize create team-memory --dimensions=384 --metric=cosine
@@ -198,7 +198,7 @@ npx tsc --noEmit     # type-check
 ## 🗂 Project structure
 
 ```
-cf-ai-team-chat/
+quorum/
 ├── src/
 │   ├── server.ts     # Worker entry, TeamRoom, TeamMember, LoginGuard
 │   ├── team.ts       # Pure team logic: routing, mentions, memory rules, limits
