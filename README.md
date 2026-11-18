@@ -136,9 +136,9 @@ The tools return fixed data (`src/project-facts.ts`). They can't reach secrets, 
 | Agent | Tools | Returns |
 |---|---|---|
 | 🧭 Lena | `get_roadmap`, `list_decisions`, `feature_planning_steps` | Planned features; design decisions and why; a feature-planning checklist |
-| 🛠 Bao | `list_api_endpoints`, `list_error_responses` | Real routes; status codes and messages the API returns |
+| 🛠 Bao | `review_diff`, `list_api_endpoints`, `list_error_responses` | Reviews a pasted diff; real routes; status codes and messages |
 | 🎨 Fern | `list_ui_flows`, `list_accessibility_checks` | Screens and actions; accessibility checks the UI meets |
-| 🧪 Quinn | `list_test_suites`, `list_security_checks`, `triage_bug_report`, `read_logs_guide` | Test files; live security checks; bug triage steps; how to read logs |
+| 🧪 Quinn | `review_diff`, `pr_review_checklist`, `check_recent_events`, `list_test_suites`, `list_security_checks`, `triage_bug_report`, `read_logs_guide` | Reviews a pasted diff; a PR review checklist; recent team events (retries, failed runs, limits, refused clears); test files; security checks; triage steps; logs guide |
 | 🚀 Dev | `get_deploy_config`, `release_checklist`, `read_logs_guide` | Deploy setup; a safe release checklist; how to read logs |
 
 Agents are also told they have no access to shared drives, email, GitHub or deployments,

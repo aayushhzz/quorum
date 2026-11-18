@@ -256,3 +256,14 @@ export const PLANNING_STEPS = [
 export function readLogsGuide(): string {
   return formatList(LOG_STEPS);
 }
+
+export const PR_REVIEW_STEPS = [
+  "Read the description: what problem does this solve, and is the scope clear?",
+  "Run the automatic checks on the diff (secrets, debug logs, unsafe code, missing tests)",
+  "Check the change is the smallest that works; flag unrelated edits",
+  "Check error handling at trust boundaries: input validation, auth and data writes",
+  "Check each new branch of logic has a test that would fail without it",
+  "Check security: no secrets, no raw HTML, no unvalidated input reaching the model or storage",
+  "Check the docs (README, PROMPTS) match the behaviour",
+  "Give a verdict: approve, approve with small changes, or request changes, with the reasons"
+] as const;

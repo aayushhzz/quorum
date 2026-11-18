@@ -23,9 +23,11 @@ import {
   formatList,
   formatTestSuites,
   LOG_STEPS,
-  PLANNING_STEPS
+  PLANNING_STEPS,
+  PR_REVIEW_STEPS
 } from "./project-facts";
 import { generateText, stepCountIs, tool, type ToolSet } from "ai";
+import { formatFindings, reviewDiff } from "./review";
 import { createWorkersAI } from "workers-ai-provider";
 import { z } from "zod";
 import {
@@ -95,15 +97,30 @@ function authorLabel(author: string): string {
   return role ? `${role.name} (@${role.id}, ${role.title})` : "the human";
 }
 
-/** Read-only tools per role. They return fixed project facts and reach nothing outside the app. */
-function roleTools(id: RoleId): ToolSet {
-  const give = (name: string, description: string, output: () => string) => ({
+/** Read-only tools per role. They return fixed project facts, a review of text the user pastes, or room events. */
+function roleTools(id: RoleId, env: Env): ToolSet {
+  const give = (
+    name: string,
+    description: string,
+    output: () => string | Promise<string>
+  ) => ({
     [name]: tool({
       description,
       inputSchema: z.object({}),
       execute: async () => output()
     })
   });
+  const giveDiff = (name: string, description: string) => ({
+    [name]: tool({
+      description,
+      inputSchema: z.object({
+        diff: z.string().max(40000).describe("The unified diff text to review")
+      }),
+      execute: async ({ diff }) => formatFindings(reviewDiff(diff))
+    })
+  });
+  const diffTool =
+    "Check a pasted pull request diff for secrets, debug logs, unsafe code and missing tests.";
   const byRole: Record<RoleId, ToolSet> = {
     lead: {
       ...give(
@@ -123,6 +140,7 @@ function roleTools(id: RoleId): ToolSet {
       )
     },
     backend: {
+      ...giveDiff("review_diff", diffTool),
       ...give(
         "list_api_endpoints",
         "List the real HTTP and RPC endpoints of this app.",
@@ -147,6 +165,7 @@ function roleTools(id: RoleId): ToolSet {
       )
     },
     qa: {
+      ...giveDiff("review_diff", diffTool),
       ...give(
         "list_test_suites",
         "List the automated test files and what they cover.",
@@ -166,6 +185,19 @@ function roleTools(id: RoleId): ToolSet {
         "read_logs_guide",
         "Explain how to find and read the server logs.",
         () => formatList(LOG_STEPS)
+      ),
+      ...give(
+        "pr_review_checklist",
+        "Give the steps for reviewing a pull request.",
+        () => formatList(PR_REVIEW_STEPS)
+      ),
+      ...give(
+        "check_recent_events",
+        "Check the team's recent events: retried or empty replies, failed runs, rate limits and refused clears.",
+        async () => {
+          const room = await getAgentByName(env.TeamRoom, "main");
+          return room.recentEvents();
+        }
       )
     },
     devops: {
@@ -282,7 +314,10 @@ export class TeamMember extends Agent<Env> {
   }
 
   /** Writes this agent's reply to a message, using only its own memory. */
-  async respond(message: ChatMessage, embedding: number[]): Promise<string> {
+  async respond(
+    message: ChatMessage,
+    embedding: number[]
+  ): Promise<{ text: string; retried: boolean; empty: boolean }> {
     const role = this.role;
     const memories = await this.recall(embedding);
     const teammates = ROLES.filter((r) => r.id !== role.id)
@@ -295,7 +330,7 @@ export class TeamMember extends Agent<Env> {
           .join("\n")
       : "(nothing yet)";
 
-    const tools = roleTools(role.id);
+    const tools = roleTools(role.id, this.env);
     const toolList = Object.entries(tools)
       .map(([name, t]) => `- ${name}: ${t.description}`)
       .join("\n");
@@ -314,6 +349,7 @@ Rules:
 - Answer the question directly. Never describe your tool calls or say what you are about to do; just give the result.
 - If no tool or memory covers a question, say you don't know rather than guessing.
 - When asked to plan, summarize or explain, give the complete answer yourself. Do not hand the task to a colleague.
+- Never promise to investigate, check, look up or run something unless one of your tools does it. Say what the tools show, and say what you cannot check.
 - Never pass a question along just because you don't know the answer. Use a tool first. Tag a colleague only for something they can answer with their own tools or memory.
 - Never tag yourself. Do not start with your name.`;
 
@@ -333,6 +369,7 @@ ${message.text}`;
       maxOutputTokens: 400
     });
     let text = first.text.trim();
+    const retried = !text;
     if (!text) {
       // Tool steps used up the budget without a final message. Retry once without
       // tools, passing along what the tools returned so the answer stays grounded.
@@ -358,7 +395,12 @@ ${message.text}`;
       });
       text = retry.text.trim();
     }
-    return stripSpeakerPrefix(text, role) || "(I couldn't produce a reply.)";
+    const reply = stripSpeakerPrefix(text, role);
+    return {
+      text: reply || "(I couldn't produce a reply.)",
+      retried,
+      empty: !reply
+    };
   }
 
   async reset(): Promise<void> {
@@ -377,6 +419,28 @@ export class TeamRoom extends Agent<Env, RoomState> {
   initialState: RoomState = { messages: [], memoryCounts: {}, working: [] };
   private roleEmbeddings?: Promise<number[][]>;
   private running = false;
+
+  /** Keeps the last 200 events. Details never include passcodes or message text. */
+  private log(kind: string, detail: string) {
+    this
+      .sql`INSERT INTO events (at, kind, detail) VALUES (${Date.now()}, ${kind}, ${detail.slice(0, 200)})`;
+    this
+      .sql`DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT 200)`;
+  }
+
+  /** Read by the QA agent's check_recent_events tool. */
+  async recentEvents(): Promise<string> {
+    const rows = this.sql<{ at: number; kind: string; detail: string }>`
+      SELECT at, kind, detail FROM events ORDER BY id DESC LIMIT 20`;
+    if (!rows.length) return "No events recorded yet.";
+    const counts = this.sql<{ kind: string; n: number }>`
+      SELECT kind, COUNT(*) AS n FROM events GROUP BY kind`;
+    const summary = counts.map((c) => `${c.kind}: ${c.n}`).join(", ");
+    const lines = rows
+      .reverse()
+      .map((r) => `${new Date(r.at).toISOString()} ${r.kind} ${r.detail}`);
+    return `Counts (last 200 events): ${summary}\nLatest:\n${lines.join("\n")}`;
+  }
   private recentSentAt: number[] = [];
 
   /** Only the server may change room state; clients get it read-only. */
@@ -385,6 +449,9 @@ export class TeamRoom extends Agent<Env, RoomState> {
   }
 
   onStart() {
+    this.sql`CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, kind TEXT NOT NULL, detail TEXT NOT NULL
+    )`;
     this.sql`CREATE TABLE IF NOT EXISTS messages (
       id TEXT PRIMARY KEY, author TEXT NOT NULL, text TEXT NOT NULL, created_at INTEGER NOT NULL
     )`;
@@ -422,7 +489,10 @@ export class TeamRoom extends Agent<Env, RoomState> {
     if (!trimmed) return;
     const now = Date.now();
     const rejection = messageRejection(this.recentSentAt, now, this.running);
-    if (rejection) throw new Error(rejection);
+    if (rejection) {
+      this.log("message_limited", rejection);
+      throw new Error(rejection);
+    }
     // In-memory guard: resets if the room restarts, which also ends any run.
     this.running = true;
     this.recentSentAt = [...this.recentSentAt, now].slice(-MESSAGES_PER_MINUTE);
@@ -442,6 +512,7 @@ export class TeamRoom extends Agent<Env, RoomState> {
       await this.deliver(message, budget);
     } catch (error) {
       console.error("Team run failed", error);
+      this.log("run_failed", String(error));
       this.append(
         "lead",
         "Something went wrong while the team was replying. Please try again."
@@ -515,13 +586,15 @@ export class TeamRoom extends Agent<Env, RoomState> {
       if (budget.left <= 0) return;
       budget.left--;
       this.setWorking(id, true);
-      let text: string;
+      let reply: { text: string; retried: boolean; empty: boolean };
       try {
-        text = await (await this.member(id)).respond(message, embedding);
+        reply = await (await this.member(id)).respond(message, embedding);
       } finally {
         this.setWorking(id, false);
       }
-      await this.deliver(this.append(id, text), budget, message.author);
+      if (reply.retried) this.log("reply_retried", id);
+      if (reply.empty) this.log("reply_empty", id);
+      await this.deliver(this.append(id, reply.text), budget, message.author);
     }
   }
 
@@ -544,12 +617,14 @@ export class TeamRoom extends Agent<Env, RoomState> {
       throw new Error("Too many wrong passcodes. Try again in a minute.");
     if (!(await checkPasscode(passcode, adminPasscode))) {
       await guard.recordFailure("admin", now);
+      this.log("clear_refused", "wrong admin passcode");
       throw new Error("Wrong passcode.");
     }
     await Promise.all(
       ROLES.map(async (r) => (await this.member(r.id)).reset())
     );
     this.sql`DELETE FROM messages`;
+    this.log("cleared", "chat and memories cleared");
     this.setState({ messages: [], memoryCounts: {}, working: [] });
   }
 }
