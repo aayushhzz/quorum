@@ -1,8 +1,4 @@
 @import "tailwindcss";
-@import "@cloudflare/kumo/styles/tailwind";
-@source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
-@source "../node_modules/streamdown/dist/*.js";
-@source "../node_modules/@streamdown/code/dist/*.js";
 
 html,
 body,
@@ -10,4 +6,16 @@ body,
   width: 100%;
   height: 100%;
   margin: 0;
+}
+
+body {
+  background: #f6f7f9;
+  color: #111827;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+  }
 }

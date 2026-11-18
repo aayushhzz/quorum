@@ -5,22 +5,23 @@
   "compatibility_date": "2026-06-11",
   "compatibility_flags": ["nodejs_compat"],
   "ai": { "binding": "AI", "remote": true },
+  "vectorize": [
+    { "binding": "MEMORY_INDEX", "index_name": "team-memory", "remote": true }
+  ],
   "assets": {
     "directory": "./public",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/agents/*", "/oauth/*"]
+    "run_worker_first": ["/agents/*"]
   },
   "durable_objects": {
     "bindings": [
-      {
-        "class_name": "ChatAgent",
-        "name": "ChatAgent"
-      }
+      { "class_name": "TeamRoom", "name": "TeamRoom" },
+      { "class_name": "TeamMember", "name": "TeamMember" }
     ]
   },
   "migrations": [
     {
-      "new_sqlite_classes": ["ChatAgent"],
+      "new_sqlite_classes": ["TeamRoom", "TeamMember"],
       "tag": "v1"
     }
   ]
