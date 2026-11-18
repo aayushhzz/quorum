@@ -21,7 +21,11 @@ async function hmacHex(key: string, message: string): Promise<string> {
     false,
     ["sign"]
   );
-  const mac = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(message));
+  const mac = await crypto.subtle.sign(
+    "HMAC",
+    k,
+    new TextEncoder().encode(message)
+  );
   return [...new Uint8Array(mac)]
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -64,7 +68,10 @@ export async function createSession(
 ): Promise<string> {
   const issuedAt = Math.floor(nowMs / 1000);
   const nonce = crypto.randomUUID().replaceAll("-", "");
-  const sig = await hmacHex(s.sessionSecret, `${issuedAt}.${nonce}.${s.passcode}`);
+  const sig = await hmacHex(
+    s.sessionSecret,
+    `${issuedAt}.${nonce}.${s.passcode}`
+  );
   return `${issuedAt}.${nonce}.${sig}`;
 }
 
@@ -80,7 +87,10 @@ export async function verifySession(
     return false;
   const age = Math.floor(nowMs / 1000) - Number(issued);
   if (age < 0 || age > SESSION_TTL_SECONDS) return false;
-  const expected = await hmacHex(s.sessionSecret, `${issued}.${nonce}.${s.passcode}`);
+  const expected = await hmacHex(
+    s.sessionSecret,
+    `${issued}.${nonce}.${s.passcode}`
+  );
   return safeEqual(sig, expected);
 }
 

@@ -12,7 +12,10 @@ test("httpsRedirectUrl upgrades public http only", () => {
     httpsRedirectUrl(new URL("http://app.example.workers.dev/a?b=1")),
     "https://app.example.workers.dev/a?b=1"
   );
-  assert.equal(httpsRedirectUrl(new URL("https://app.example.workers.dev/")), null);
+  assert.equal(
+    httpsRedirectUrl(new URL("https://app.example.workers.dev/")),
+    null
+  );
   assert.equal(httpsRedirectUrl(new URL("http://localhost:5173/")), null);
   assert.equal(isLocalHost("127.0.0.1"), true);
   assert.equal(isLocalHost("evil-localhost.com"), false);

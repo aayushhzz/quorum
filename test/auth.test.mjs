@@ -48,15 +48,27 @@ test("sessions verify, are unique, and do not embed the passcode", async () => {
 
 test("sessions expire server-side and reject future issue times", async () => {
   const t = await createSession(S, NOW);
-  assert.equal(await verifySession(t, S, NOW + SESSION_TTL_SECONDS * 1000), true);
-  assert.equal(await verifySession(t, S, NOW + (SESSION_TTL_SECONDS + 1) * 1000), false);
+  assert.equal(
+    await verifySession(t, S, NOW + SESSION_TTL_SECONDS * 1000),
+    true
+  );
+  assert.equal(
+    await verifySession(t, S, NOW + (SESSION_TTL_SECONDS + 1) * 1000),
+    false
+  );
   assert.equal(await verifySession(t, S, NOW - 5000), false);
 });
 
 test("sessions die when either secret changes, and fail closed", async () => {
   const t = await createSession(S, NOW);
-  assert.equal(await verifySession(t, { ...S, passcode: "rotated" }, NOW), false);
-  assert.equal(await verifySession(t, { ...S, sessionSecret: "other" }, NOW), false);
+  assert.equal(
+    await verifySession(t, { ...S, passcode: "rotated" }, NOW),
+    false
+  );
+  assert.equal(
+    await verifySession(t, { ...S, sessionSecret: "other" }, NOW),
+    false
+  );
   assert.equal(await verifySession(t, { passcode: "secret" }, NOW), false);
   assert.equal(await verifySession(undefined, S, NOW), false);
 });
@@ -64,7 +76,10 @@ test("sessions die when either secret changes, and fail closed", async () => {
 test("tampered or malformed tokens are rejected", async () => {
   const t = await createSession(S, NOW);
   const [iat, nonce, sig] = t.split(".");
-  assert.equal(await verifySession(`${Number(iat) + 1}.${nonce}.${sig}`, S, NOW), false);
+  assert.equal(
+    await verifySession(`${Number(iat) + 1}.${nonce}.${sig}`, S, NOW),
+    false
+  );
   assert.equal(await verifySession(`${iat}.x${nonce}.${sig}`, S, NOW), false);
   assert.equal(await verifySession(`${t}.extra`, S, NOW), false);
   assert.equal(await verifySession("abc.def.ghi", S, NOW), false);

@@ -359,9 +359,7 @@ export class TeamRoom extends Agent<Env, RoomState> {
     );
     this.setState({
       ...this.state,
-      memoryCounts: Object.fromEntries(
-        ROLES.map((r, i) => [r.id, counts[i]])
-      )
+      memoryCounts: Object.fromEntries(ROLES.map((r, i) => [r.id, counts[i]]))
     });
 
     for (const id of responders) {
@@ -389,7 +387,9 @@ export class TeamRoom extends Agent<Env, RoomState> {
   async clearAll(): Promise<void> {
     if (this.env.ACCESS_MODE === "open")
       throw new Error("Clearing memories is disabled on the public demo.");
-    await Promise.all(ROLES.map(async (r) => (await this.member(r.id)).reset()));
+    await Promise.all(
+      ROLES.map(async (r) => (await this.member(r.id)).reset())
+    );
     this.sql`DELETE FROM messages`;
     this.setState({ messages: [], memoryCounts: {}, working: [] });
   }

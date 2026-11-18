@@ -46,9 +46,13 @@ export function securityHeaders(local: boolean): Record<string, string> {
 }
 
 /** Copies a response with security headers added. WebSocket upgrades are returned untouched. */
-export function withSecurityHeaders(response: Response, local: boolean): Response {
+export function withSecurityHeaders(
+  response: Response,
+  local: boolean
+): Response {
   if (response.status === 101) return response;
   const secured = new Response(response.body, response);
-  for (const [k, v] of Object.entries(securityHeaders(local))) secured.headers.set(k, v);
+  for (const [k, v] of Object.entries(securityHeaders(local)))
+    secured.headers.set(k, v);
   return secured;
 }

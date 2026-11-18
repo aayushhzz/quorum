@@ -39,22 +39,24 @@ function Avatar({ role }: { role?: Role }) {
 
 /** Highlights @tags that name a teammate. */
 function withMentions(text: unknown): ReactNode[] {
-  return String(text ?? "").split(/(@[a-z]+)\b/gi).map((part, i) => {
-    const tag = part.startsWith("@") ? part.slice(1).toLowerCase() : "";
-    const role = ROLES.find(
-      (r) => r.id === tag || r.name.toLowerCase() === tag
-    );
-    return role ? (
-      <span
-        key={i}
-        className={`rounded px-1 font-medium text-white ${COLORS[role.id]}`}
-      >
-        @{role.name}
-      </span>
-    ) : (
-      part
-    );
-  });
+  return String(text ?? "")
+    .split(/(@[a-z]+)\b/gi)
+    .map((part, i) => {
+      const tag = part.startsWith("@") ? part.slice(1).toLowerCase() : "";
+      const role = ROLES.find(
+        (r) => r.id === tag || r.name.toLowerCase() === tag
+      );
+      return role ? (
+        <span
+          key={i}
+          className={`rounded px-1 font-medium text-white ${COLORS[role.id]}`}
+        >
+          @{role.name}
+        </span>
+      ) : (
+        part
+      );
+    });
 }
 
 /** Shows the passcode screen until the server accepts the session cookie. */
@@ -187,7 +189,9 @@ function TeamChat() {
                     setViewing(role);
                   }}
                   className={`flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                    viewing?.id === role.id ? "bg-gray-100 dark:bg-gray-800" : ""
+                    viewing?.id === role.id
+                      ? "bg-gray-100 dark:bg-gray-800"
+                      : ""
                   }`}
                   aria-label={`View ${role.name}'s memory`}
                 >
@@ -282,7 +286,10 @@ function TeamChat() {
             );
           })}
           {state.working.map((id) => (
-            <div key={id} className="flex items-center gap-2 text-xs text-gray-500">
+            <div
+              key={id}
+              className="flex items-center gap-2 text-xs text-gray-500"
+            >
               <Avatar role={roleById(id)} /> {roleById(id)?.name} is typing…
             </div>
           ))}
