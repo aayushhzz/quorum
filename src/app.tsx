@@ -150,6 +150,9 @@ function TeamChat() {
   }, [viewing, state.memoryCounts]);
 
   const [notice, setNotice] = useState("");
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearPass, setClearPass] = useState("");
+  const [clearMsg, setClearMsg] = useState("");
 
   const send = async (text = draft) => {
     if (!text.trim()) return;
@@ -211,22 +214,72 @@ function TeamChat() {
             );
           })}
         </ul>
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm("Clear the chat and every agent's memory?")) {
+        {clearOpen ? (
+          <form
+            className="mt-4 space-y-2 md:block"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setClearMsg("");
               agent
-                .call("clearAll")
-                .then(() => setMemories([]))
-                .catch((e: unknown) =>
-                  setNotice(e instanceof Error ? e.message : "Could not clear.")
+                .call("clearAll", [clearPass])
+                .then(() => {
+                  setMemories([]);
+                  setClearOpen(false);
+                  setClearPass("");
+                })
+                .catch((err: unknown) =>
+                  setClearMsg(
+                    err instanceof Error ? err.message : "Could not clear."
+                  )
                 );
-            }
-          }}
-          className="mt-4 hidden text-xs text-red-600 hover:underline md:block"
-        >
-          Clear chat and all memories
-        </button>
+            }}
+          >
+            <label className="block text-xs text-gray-500" htmlFor="admin-pass">
+              Admin passcode to clear everything
+            </label>
+            <input
+              id="admin-pass"
+              type="password"
+              autoComplete="off"
+              value={clearPass}
+              onChange={(e) => setClearPass(e.target.value)}
+              className="w-full rounded-md border border-gray-300 bg-transparent p-1.5 text-xs dark:border-gray-700"
+            />
+            {clearMsg && (
+              <p role="alert" className="text-xs text-red-600">
+                {clearMsg}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={!clearPass}
+                className="rounded-md bg-red-600 px-2 py-1 text-xs text-white disabled:opacity-40"
+              >
+                Clear everything
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setClearOpen(false);
+                  setClearPass("");
+                  setClearMsg("");
+                }}
+                className="text-xs text-gray-500 hover:underline"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setClearOpen(true)}
+            className="mt-4 hidden text-xs text-red-600 hover:underline md:block"
+          >
+            Clear chat and all memories
+          </button>
+        )}
         <button
           type="button"
           onClick={async () => {

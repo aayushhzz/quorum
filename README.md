@@ -184,6 +184,7 @@ npm run dev
 ### 🚢 Deploy
 
 ```bash
+npx wrangler secret put ADMIN_PASSCODE   # needed to clear the chat and memories
 npm run deploy
 # To require a passcode instead: set ACCESS_MODE to "passcode" in wrangler.jsonc, then
 # npx wrangler secret put TEAM_PASSCODE
@@ -202,12 +203,13 @@ npx tsc --noEmit     # type-check
 
 | Protection | Details |
 |---|---|
-| 🔑 **Access switch** | `ACCESS_MODE` in `wrangler.jsonc`: `open` (public demo, no login; clearing memories is disabled) or `passcode` (requires `TEAM_PASSCODE`) |
+| 🔑 **Access switch** | `ACCESS_MODE` in `wrangler.jsonc`: `open` (public demo, no login) or `passcode` (requires `TEAM_PASSCODE`) |
 | 🍪 **Sessions** | Signed with a separate secret, 7-day expiry, HttpOnly, Secure, SameSite=Strict, logout |
 | 🛡 **Brute force** | 5 failed logins per IP per minute and 50 overall per hour, then HTTP 429 |
 | 🌐 **Transport** | HTTP redirected to HTTPS; HSTS enabled |
 | 📜 **Headers** | Content-Security-Policy (`frame-ancestors 'none'`), `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` |
 | 🧱 **Room state** | Read-only for clients; only the server can change it |
+| 🗑 **Clear everything** | Needs the `ADMIN_PASSCODE` secret; wrong guesses are rate-limited |
 | 💸 **Cost limits** | One team run at a time per room, 6 messages per minute |
 | 📝 **Logging** | Workers observability on; failed logins logged by IP, never the passcode |
 

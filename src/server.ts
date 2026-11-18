@@ -440,9 +440,19 @@ export class TeamRoom extends Agent<Env, RoomState> {
   }
 
   @callable()
-  async clearAll(): Promise<void> {
-    if (this.env.ACCESS_MODE === "open")
-      throw new Error("Clearing memories is disabled on the public demo.");
+  async clearAll(passcode: unknown): Promise<void> {
+    // Anyone can use the public demo, but wiping it needs the admin passcode.
+    const adminPasscode = this.env.ADMIN_PASSCODE;
+    if (!adminPasscode)
+      throw new Error("Clearing is off: no admin passcode is set.");
+    const guard = this.env.LoginGuard.getByName("global");
+    const now = Date.now();
+    if (await guard.isBlocked("admin", now))
+      throw new Error("Too many wrong passcodes. Try again in a minute.");
+    if (!(await checkPasscode(passcode, adminPasscode))) {
+      await guard.recordFailure("admin", now);
+      throw new Error("Wrong passcode.");
+    }
     await Promise.all(
       ROLES.map(async (r) => (await this.member(r.id)).reset())
     );
