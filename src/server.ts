@@ -255,17 +255,42 @@ ${memoryText}
 New message from ${authorLabel(message.author)}:
 ${message.text}`;
 
-    const { text } = await generateText({
-      model: createWorkersAI({ binding: this.env.AI })(CHAT_MODEL),
+    const model = createWorkersAI({ binding: this.env.AI })(CHAT_MODEL);
+    const first = await generateText({
+      model,
       system,
       prompt: user,
       tools,
       stopWhen: stepCountIs(3),
       maxOutputTokens: 400
     });
-    return (
-      stripSpeakerPrefix(text.trim(), role) || "(I couldn't produce a reply.)"
-    );
+    let text = first.text.trim();
+    if (!text) {
+      // Tool steps used up the budget without a final message. Retry once without
+      // tools, passing along what the tools returned so the answer stays grounded.
+      const facts = first.steps
+        .flatMap((step) => step.toolResults)
+        .map(
+          (r) =>
+            `${r.toolName} returned:\n${JSON.stringify((r as { output?: unknown }).output)}`
+        )
+        .join("\n\n");
+      console.warn("Empty reply, retrying", {
+        role: role.id,
+        finishReason: first.finishReason,
+        toolCalls: first.steps.flatMap((s) =>
+          s.toolCalls.map((t) => t.toolName)
+        )
+      });
+      const retry = await generateText({
+        model,
+        system,
+        prompt: `${user}${facts ? `\n\nTool results:\n${facts}` : ""}\n\nReply now in plain text. Do not call tools.`,
+        maxOutputTokens: 400
+      });
+      text = retry.text.trim();
+    }
+    return stripSpeakerPrefix(text, role) || "(I couldn't produce a reply.)";
   }
 
   async reset(): Promise<void> {
