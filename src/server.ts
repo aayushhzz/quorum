@@ -10,6 +10,16 @@ import {
 } from "./auth";
 import { httpsRedirectUrl, isLocalHost, withSecurityHeaders } from "./http";
 import {
+  ROADMAP,
+  UI_FLOWS,
+  formatDeployConfig,
+  formatEndpoints,
+  formatTestSuites
+} from "./project-facts";
+import { generateText, stepCountIs, tool, type ToolSet } from "ai";
+import { createWorkersAI } from "workers-ai-provider";
+import { z } from "zod";
+import {
   HUMAN_ID,
   MAX_AGENT_REPLIES,
   MESSAGES_PER_MINUTE,
@@ -74,6 +84,45 @@ async function embed(env: Env, texts: string[]): Promise<number[][]> {
 function authorLabel(author: string): string {
   const role = roleById(author);
   return role ? `${role.name} (@${role.id}, ${role.title})` : "the human";
+}
+
+/** Read-only tools per role. They return fixed project facts and reach nothing outside the app. */
+function roleTools(id: RoleId): ToolSet {
+  const give = (name: string, description: string, output: () => string) => ({
+    [name]: tool({
+      description,
+      inputSchema: z.object({}),
+      execute: async () => output()
+    })
+  });
+  const byRole: Record<RoleId, ToolSet> = {
+    lead: give(
+      "get_roadmap",
+      "List the planned next features for this project.",
+      () => ROADMAP.join("\n")
+    ),
+    backend: give(
+      "list_api_endpoints",
+      "List the real HTTP and RPC endpoints of this app.",
+      formatEndpoints
+    ),
+    frontend: give(
+      "list_ui_flows",
+      "List the screens and actions in the chat UI.",
+      () => UI_FLOWS.join("\n")
+    ),
+    qa: give(
+      "list_test_suites",
+      "List the automated test files and what they cover.",
+      formatTestSuites
+    ),
+    devops: give(
+      "get_deploy_config",
+      "Show the deployment setup: bindings, models, limits and access mode.",
+      formatDeployConfig
+    )
+  };
+  return byRole[id];
 }
 
 /**
@@ -182,14 +231,21 @@ export class TeamMember extends Agent<Env> {
           .join("\n")
       : "(nothing yet)";
 
+    const tools = roleTools(role.id);
+    const toolList = Object.entries(tools)
+      .map(([name, t]) => `- ${name}: ${t.description}`)
+      .join("\n");
     const system = `You are ${role.name}, the ${role.title} on an AI engineering team. You work in a shared group chat with a human teammate and these colleagues:
 ${teammates}
 
 Your focus: ${role.focus}.
 You cannot see the full chat. You only know the memories below, which you chose to keep.
+Your tools (read-only facts about this project):
+${toolList}
 Rules:
 - Answer as ${role.name} in under 120 words. Be concrete and practical.
-- Do your own part of the work yourself.
+- Use a tool when a question is about this project's facts. Do not guess endpoints, settings or tests.
+- You have no access to shared drives, email, calendars, GitHub or deployments. Never say you saved, sent, deployed or checked anything outside this chat.
 - If a specific part needs a colleague, tag them as @id and say exactly what you need. Tag at most one colleague, and only when they must act.
 - Never tag yourself. Do not start with your name.`;
 
@@ -199,16 +255,16 @@ ${memoryText}
 New message from ${authorLabel(message.author)}:
 ${message.text}`;
 
-    const result = await this.env.AI.run(CHAT_MODEL, {
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user }
-      ],
-      max_tokens: 400
+    const { text } = await generateText({
+      model: createWorkersAI({ binding: this.env.AI })(CHAT_MODEL),
+      system,
+      prompt: user,
+      tools,
+      stopWhen: stepCountIs(3),
+      maxOutputTokens: 400
     });
     return (
-      stripSpeakerPrefix(extractText(result), role) ||
-      "(I couldn't produce a reply.)"
+      stripSpeakerPrefix(text.trim(), role) || "(I couldn't produce a reply.)"
     );
   }
 

@@ -128,6 +128,24 @@ One request, passed around the team:
 
 ---
 
+## 🧰 Agent tools
+
+Each agent has a few read-only tools, so it answers from real project facts instead of guessing.
+The tools return fixed data (`src/project-facts.ts`). They can't reach secrets, the network or any other system.
+
+| Agent | Tool | Returns |
+|---|---|---|
+| 🧭 Lena | `get_roadmap` | Planned next features |
+| 🛠 Bao | `list_api_endpoints` | The real HTTP and RPC routes |
+| 🎨 Fern | `list_ui_flows` | Screens and actions in the chat UI |
+| 🧪 Quinn | `list_test_suites` | Test files and what they cover |
+| 🚀 Dev | `get_deploy_config` | Bindings, models, limits and access mode |
+
+Agents are also told they have no access to shared drives, email, GitHub or deployments,
+so they won't claim to have saved or checked anything outside the chat.
+
+---
+
 ## ✅ Assignment checklist
 
 | Requirement | How it's met |
@@ -206,6 +224,7 @@ quorum/
 │   ├── http.ts       # HTTPS redirect and security headers
 │   ├── app.tsx       # React UI: passcode screen, chat, memory viewer
 │   ├── client.tsx    # Browser entry point
+│   ├── project-facts.ts # Read-only facts behind the agent tools
 │   └── styles.css    # Global styles
 ├── test/             # node:test suites for the pure logic
 ├── assets/           # README images
