@@ -313,6 +313,7 @@ Rules:
 - If a specific part needs a colleague, tag them as @id and say exactly what you need. Tag at most one colleague, and only when they must act.
 - Answer the question directly. Never describe your tool calls or say what you are about to do; just give the result.
 - If no tool or memory covers a question, say you don't know rather than guessing.
+- When asked to plan, summarize or explain, give the complete answer yourself. Do not hand the task to a colleague.
 - Never pass a question along just because you don't know the answer. Use a tool first. Tag a colleague only for something they can answer with their own tools or memory.
 - Never tag yourself. Do not start with your name.`;
 
