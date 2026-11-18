@@ -10,11 +10,20 @@ import {
 } from "./auth";
 import { httpsRedirectUrl, isLocalHost, withSecurityHeaders } from "./http";
 import {
+  ACCESSIBILITY_CHECKS,
+  DECISIONS,
+  RELEASE_STEPS,
   ROADMAP,
+  SECURITY_CHECKS,
+  TRIAGE_STEPS,
   UI_FLOWS,
   formatDeployConfig,
   formatEndpoints,
-  formatTestSuites
+  formatErrors,
+  formatList,
+  formatTestSuites,
+  LOG_STEPS,
+  PLANNING_STEPS
 } from "./project-facts";
 import { generateText, stepCountIs, tool, type ToolSet } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
@@ -96,31 +105,86 @@ function roleTools(id: RoleId): ToolSet {
     })
   });
   const byRole: Record<RoleId, ToolSet> = {
-    lead: give(
-      "get_roadmap",
-      "List the planned next features for this project.",
-      () => ROADMAP.join("\n")
-    ),
-    backend: give(
-      "list_api_endpoints",
-      "List the real HTTP and RPC endpoints of this app.",
-      formatEndpoints
-    ),
-    frontend: give(
-      "list_ui_flows",
-      "List the screens and actions in the chat UI.",
-      () => UI_FLOWS.join("\n")
-    ),
-    qa: give(
-      "list_test_suites",
-      "List the automated test files and what they cover.",
-      formatTestSuites
-    ),
-    devops: give(
-      "get_deploy_config",
-      "Show the deployment setup: bindings, models, limits and access mode.",
-      formatDeployConfig
-    )
+    lead: {
+      ...give(
+        "get_roadmap",
+        "List the planned next features for this project.",
+        () => formatList(ROADMAP)
+      ),
+      ...give(
+        "list_decisions",
+        "List the key design decisions and why they were made.",
+        () => formatList(DECISIONS)
+      ),
+      ...give(
+        "feature_planning_steps",
+        "Give the steps for planning a new feature.",
+        () => formatList(PLANNING_STEPS)
+      )
+    },
+    backend: {
+      ...give(
+        "list_api_endpoints",
+        "List the real HTTP and RPC endpoints of this app.",
+        formatEndpoints
+      ),
+      ...give(
+        "list_error_responses",
+        "List the status codes and messages the API returns and when.",
+        formatErrors
+      )
+    },
+    frontend: {
+      ...give(
+        "list_ui_flows",
+        "List the screens and actions in the chat UI.",
+        () => formatList(UI_FLOWS)
+      ),
+      ...give(
+        "list_accessibility_checks",
+        "List the accessibility checks the UI meets.",
+        () => formatList(ACCESSIBILITY_CHECKS)
+      )
+    },
+    qa: {
+      ...give(
+        "list_test_suites",
+        "List the automated test files and what they cover.",
+        formatTestSuites
+      ),
+      ...give(
+        "list_security_checks",
+        "List the security behaviour the live site is checked against.",
+        () => formatList(SECURITY_CHECKS)
+      ),
+      ...give(
+        "triage_bug_report",
+        "Give the steps for triaging a bug report.",
+        () => formatList(TRIAGE_STEPS)
+      ),
+      ...give(
+        "read_logs_guide",
+        "Explain how to find and read the server logs.",
+        () => formatList(LOG_STEPS)
+      )
+    },
+    devops: {
+      ...give(
+        "get_deploy_config",
+        "Show the deployment setup: bindings, models, limits and access mode.",
+        formatDeployConfig
+      ),
+      ...give(
+        "release_checklist",
+        "Give the steps to release a change safely.",
+        () => formatList(RELEASE_STEPS)
+      ),
+      ...give(
+        "read_logs_guide",
+        "Explain how to find and read the server logs.",
+        () => formatList(LOG_STEPS)
+      )
+    }
   };
   return byRole[id];
 }
@@ -247,6 +311,9 @@ Rules:
 - Use a tool when a question is about this project's facts. Do not guess endpoints, settings or tests.
 - You have no access to shared drives, email, calendars, GitHub or deployments. Never say you saved, sent, deployed or checked anything outside this chat.
 - If a specific part needs a colleague, tag them as @id and say exactly what you need. Tag at most one colleague, and only when they must act.
+- Answer the question directly. Never describe your tool calls or say what you are about to do; just give the result.
+- If no tool or memory covers a question, say you don't know rather than guessing.
+- Never pass a question along just because you don't know the answer. Use a tool first. Tag a colleague only for something they can answer with their own tools or memory.
 - Never tag yourself. Do not start with your name.`;
 
     const user = `Your memories:

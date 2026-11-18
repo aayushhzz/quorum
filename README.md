@@ -130,16 +130,16 @@ One request, passed around the team:
 
 ## 🧰 Agent tools
 
-Each agent has a few read-only tools, so it answers from real project facts instead of guessing.
+Each agent has a few read-only tools, so it answers from real project facts instead of guessing. Some are checklists (skills) that walk a teammate through a task such as triaging a bug or releasing a change.
 The tools return fixed data (`src/project-facts.ts`). They can't reach secrets, the network or any other system.
 
-| Agent | Tool | Returns |
+| Agent | Tools | Returns |
 |---|---|---|
-| 🧭 Lena | `get_roadmap` | Planned next features |
-| 🛠 Bao | `list_api_endpoints` | The real HTTP and RPC routes |
-| 🎨 Fern | `list_ui_flows` | Screens and actions in the chat UI |
-| 🧪 Quinn | `list_test_suites` | Test files and what they cover |
-| 🚀 Dev | `get_deploy_config` | Bindings, models, limits and access mode |
+| 🧭 Lena | `get_roadmap`, `list_decisions`, `feature_planning_steps` | Planned features; design decisions and why; a feature-planning checklist |
+| 🛠 Bao | `list_api_endpoints`, `list_error_responses` | Real routes; status codes and messages the API returns |
+| 🎨 Fern | `list_ui_flows`, `list_accessibility_checks` | Screens and actions; accessibility checks the UI meets |
+| 🧪 Quinn | `list_test_suites`, `list_security_checks`, `triage_bug_report`, `read_logs_guide` | Test files; live security checks; bug triage steps; how to read logs |
+| 🚀 Dev | `get_deploy_config`, `release_checklist`, `read_logs_guide` | Deploy setup; a safe release checklist; how to read logs |
 
 Agents are also told they have no access to shared drives, email, GitHub or deployments,
 so they won't claim to have saved or checked anything outside the chat.
