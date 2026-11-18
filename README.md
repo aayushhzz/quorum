@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/banner.svg" alt="AI Engineering Team banner" width="100%" />
+<img src="assets/banner.svg" alt="AI Engineering Team banner" width="100%" />
 
 # 🤖 AI Engineering Team
 
@@ -81,7 +81,7 @@ with CSP and HSTS, and server-only room state.
 
 <div align="center">
 
-<img src="docs/chat-preview.svg" alt="Team chat preview: Lena plans a signup feature and hands tasks to Fern, Bao and Dev" width="90%" />
+<img src="assets/chat-preview.svg" alt="Team chat preview: Lena plans a signup feature and hands tasks to Fern, Bao and Dev" width="90%" />
 
 </div>
 
@@ -99,7 +99,7 @@ One request, passed around the team:
 
 <div align="center">
 
-<img src="docs/architecture.svg" alt="Architecture diagram" width="92%" />
+<img src="assets/architecture.svg" alt="Architecture diagram" width="92%" />
 
 </div>
 
@@ -202,11 +202,16 @@ cf-ai-team-chat/
 │   ├── team.ts       # Pure team logic: routing, mentions, memory rules, limits
 │   ├── auth.ts       # Passcode checks, signed sessions, login limits
 │   ├── http.ts       # HTTPS redirect and security headers
-│   └── app.tsx       # React UI: passcode screen, chat, memory viewer
+│   ├── app.tsx       # React UI: passcode screen, chat, memory viewer
+│   ├── client.tsx    # Browser entry point
+│   └── styles.css    # Global styles
 ├── test/             # node:test suites for the pure logic
-├── docs/             # README images
+├── assets/           # README images
+├── docs/             # Prompt history
+├── public/           # Static files (favicon)
+├── index.html        # App shell
 ├── wrangler.jsonc    # Bindings: AI, Vectorize, Durable Objects, assets
-└── PROMPTS.md        # Prompt history used to build this project
+└── package.json
 ```
 
 ---
@@ -233,4 +238,4 @@ cf-ai-team-chat/
 [Tailwind CSS](https://tailwindcss.com/) ·
 [TypeScript](https://www.typescriptlang.org/)
 
-Built with AI-assisted coding (Claude Code). See [PROMPTS.md](PROMPTS.md) for the prompt history.
+Built with AI-assisted coding (Claude Code). See [PROMPTS.md](docs/PROMPTS.md) for the prompt history.
