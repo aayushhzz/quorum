@@ -16,6 +16,8 @@ Every agent keeps its own capped memory and answers with RAG, all running on Clo
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=111827)](https://react.dev/)
 
+**🌐 [Live demo](https://cf-ai-chat-agent.aayushacc5.workers.dev)** · *passcode required*
+
 [Features](#-features) · [Demo](#-see-it-in-action) · [Architecture](#-architecture) · [Team](#-meet-the-team) · [Quick start](#-quick-start) · [Security](#-security) · [Roadmap](#-roadmap)
 
 </div>
