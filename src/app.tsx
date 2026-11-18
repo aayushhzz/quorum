@@ -57,7 +57,70 @@ function withMentions(text: string): ReactNode[] {
   });
 }
 
+/** Shows the passcode screen until the server accepts the session cookie. */
 export default function App() {
+  const [status, setStatus] = useState<"checking" | "locked" | "open">(
+    "checking"
+  );
+  const [passcode, setPasscode] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/session").then((r) => setStatus(r.ok ? "open" : "locked"));
+  }, []);
+
+  if (status === "open") return <TeamChat />;
+  if (status === "checking") return null;
+
+  return (
+    <div className="flex h-full items-center justify-center p-4">
+      <form
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setError("");
+          const r = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ passcode })
+          });
+          if (r.ok) setStatus("open");
+          else setError("Wrong passcode. Try again.");
+        }}
+      >
+        <h1 className="mb-1 text-lg font-semibold">AI Engineering Team</h1>
+        <p className="mb-4 text-sm text-gray-500">
+          Enter the team passcode to join the chat.
+        </p>
+        <label htmlFor="passcode" className="mb-1 block text-sm font-medium">
+          Passcode
+        </label>
+        <input
+          id="passcode"
+          type="password"
+          autoComplete="current-password"
+          value={passcode}
+          onChange={(e) => setPasscode(e.target.value)}
+          className="mb-2 w-full rounded-lg border border-gray-300 bg-transparent p-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-gray-700"
+        />
+        {error && (
+          <p role="alert" className="mb-2 text-sm text-red-600">
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={!passcode}
+          className="w-full rounded-lg bg-violet-600 py-2 text-sm font-medium text-white disabled:opacity-40"
+        >
+          Join
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function TeamChat() {
   const [state, setState] = useState<RoomState>({
     messages: [],
     memoryCounts: {},

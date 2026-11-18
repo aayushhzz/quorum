@@ -52,8 +52,16 @@ You ──► TeamRoom (Durable Object)
 npm install
 npx wrangler login                                   # Workers AI + Vectorize run remotely, even in dev
 npx wrangler vectorize create team-memory --dimensions=384 --metric=cosine   # once per account
+echo 'TEAM_PASSCODE="choose-a-passcode"' > .dev.vars  # gitignored; the chat asks for it
 npm run dev                                          # http://localhost:5173
 ```
+
+## Access
+
+The chat is behind a shared passcode. `POST /api/login` checks it and sets an
+HttpOnly, Secure, SameSite=Strict cookie holding an HMAC of the passcode; every
+`/agents/*` request (including the WebSocket) needs that cookie. With no passcode
+configured, everything is refused. Changing the passcode signs everyone out.
 
 Your account needs a workers.dev subdomain for remote bindings in dev
 (Dashboard → Workers & Pages).
@@ -61,13 +69,14 @@ Your account needs a workers.dev subdomain for remote bindings in dev
 ## Test
 
 ```bash
-node --test test/     # pure team logic: mentions, hand-offs, memory decision, cap, routing
+node --test test/     # team logic and passcode auth
 npx tsc --noEmit
 ```
 
 ## Deploy
 
 ```bash
+npx wrangler secret put TEAM_PASSCODE   # once
 npm run deploy
 ```
 

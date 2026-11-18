@@ -1,4 +1,5 @@
 import { Agent, callable, getAgentByName, routeAgentRequest } from "agents";
+import { authCookie, checkPasscode, isAuthorized } from "./auth";
 import {
   HUMAN_ID,
   MAX_AGENT_REPLIES,
@@ -362,6 +363,26 @@ export class TeamRoom extends Agent<Env, RoomState> {
 
 export default {
   async fetch(request: Request, env: Env) {
+    const { pathname } = new URL(request.url);
+    const passcode = env.TEAM_PASSCODE;
+
+    if (pathname === "/api/login" && request.method === "POST") {
+      const body = (await request.json().catch(() => ({}))) as {
+        passcode?: unknown;
+      };
+      if (!(await checkPasscode(body.passcode, passcode)))
+        return new Response("Wrong passcode", { status: 401 });
+      return new Response(null, {
+        status: 204,
+        headers: { "Set-Cookie": await authCookie(passcode) }
+      });
+    }
+
+    const authorized = await isAuthorized(request, passcode);
+    if (pathname === "/api/session")
+      return new Response(null, { status: authorized ? 204 : 401 });
+    if (!authorized) return new Response("Unauthorized", { status: 401 });
+
     return (
       (await routeAgentRequest(request, env)) ||
       new Response("Not found", { status: 404 })
