@@ -5,6 +5,8 @@
   "compatibility_date": "2026-06-11",
   "compatibility_flags": ["nodejs_compat"],
   "ai": { "binding": "AI", "remote": true },
+  // "open" = public demo (no passcode). Use "passcode" to require TEAM_PASSCODE.
+  "vars": { "ACCESS_MODE": "open" },
   "vectorize": [
     { "binding": "MEMORY_INDEX", "index_name": "team-memory", "remote": true }
   ],

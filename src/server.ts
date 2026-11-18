@@ -387,6 +387,8 @@ export class TeamRoom extends Agent<Env, RoomState> {
 
   @callable()
   async clearAll(): Promise<void> {
+    if (this.env.ACCESS_MODE === "open")
+      throw new Error("Clearing memories is disabled on the public demo.");
     await Promise.all(ROLES.map(async (r) => (await this.member(r.id)).reset()));
     this.sql`DELETE FROM messages`;
     this.setState({ messages: [], memoryCounts: {}, working: [] });
@@ -475,7 +477,9 @@ async function handle(request: Request, env: Env): Promise<Response> {
     });
 
   if (pathname === "/api/session" || pathname.startsWith("/agents/")) {
-    const authorized = await isAuthorized(request, secrets, now);
+    // ACCESS_MODE=open: public demo, no passcode. Anything else requires a session.
+    const open = env.ACCESS_MODE === "open";
+    const authorized = open || (await isAuthorized(request, secrets, now));
     if (pathname === "/api/session")
       return new Response(null, { status: authorized ? 204 : 401 });
     if (!authorized) return new Response("Unauthorized", { status: 401 });

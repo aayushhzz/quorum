@@ -211,8 +211,12 @@ function TeamChat() {
           type="button"
           onClick={() => {
             if (confirm("Clear the chat and every agent's memory?")) {
-              agent.call("clearAll");
-              setMemories([]);
+              agent
+                .call("clearAll")
+                .then(() => setMemories([]))
+                .catch((e: unknown) =>
+                  setNotice(e instanceof Error ? e.message : "Could not clear.")
+                );
             }
           }}
           className="mt-4 hidden text-xs text-red-600 hover:underline md:block"

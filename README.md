@@ -16,7 +16,7 @@ Every agent keeps its own capped memory and answers with RAG, all running on Clo
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=111827)](https://react.dev/)
 
-**🌐 [Live demo](https://cf-ai-chat-agent.aayushacc5.workers.dev)** · *passcode required*
+**🌐 [Live demo](https://cf-ai-chat-agent.aayushacc5.workers.dev)** · *open to try, no login*
 
 [Features](#-features) · [Demo](#-see-it-in-action) · [Architecture](#-architecture) · [Team](#-meet-the-team) · [Quick start](#-quick-start) · [Security](#-security) · [Roadmap](#-roadmap)
 
@@ -166,9 +166,9 @@ npm run dev
 ### 🚢 Deploy
 
 ```bash
-npx wrangler secret put TEAM_PASSCODE
-openssl rand -hex 32 | npx wrangler secret put SESSION_SECRET
 npm run deploy
+# To require a passcode instead: set ACCESS_MODE to "passcode" in wrangler.jsonc, then
+# npx wrangler secret put TEAM_PASSCODE
 ```
 
 ### 🧪 Test
@@ -184,7 +184,7 @@ npx tsc --noEmit     # type-check
 
 | Protection | Details |
 |---|---|
-| 🔑 **Passcode login** | Constant-time comparison; the passcode is never stored in a cookie |
+| 🔑 **Access switch** | `ACCESS_MODE` in `wrangler.jsonc`: `open` (public demo, no login; clearing memories is disabled) or `passcode` (requires `TEAM_PASSCODE`) |
 | 🍪 **Sessions** | Signed with a separate secret, 7-day expiry, HttpOnly, Secure, SameSite=Strict, logout |
 | 🛡 **Brute force** | 5 failed logins per IP per minute and 50 overall per hour, then HTTP 429 |
 | 🌐 **Transport** | HTTP redirected to HTTPS; HSTS enabled |
